@@ -1,0 +1,310 @@
+#!/usr/bin/env python
+# Copyright (C) 2013 Gunnar Beutner
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+TRUST_HOST = '127.0.0.1'
+TRUST_PORT = 5776
+TRUST_NAME = 'gnb.netsplit.net'
+TRUST_PASS = 'test123'
+
+# Do not modify beyond this point.
+
+VERSION = 1
+
+import os
+import sys
+import hmac
+import fcntl
+import asyncore
+import socket
+import base64
+from time import time
+
+class LineDispatcher(asyncore.dispatcher):
+    def __init__(self, fd=None, map=None):
+        asyncore.dispatcher.__init__(self, None, map)
+
+        self.in_buffer = ''
+        self.out_buffer = ''
+
+        if fd == None:
+            return
+
+        self.connected = True
+        try:
+            fd = fd.fileno()
+        except AttributeError:
+            pass
+        self.set_file(fd)
+        # set it to non-blocking mode
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL, 0)
+        flags = flags | os.O_NONBLOCK
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+
+    def set_file(self, fd):
+        self.socket = asyncore.file_wrapper(fd)
+        self._fileno = self.socket.fileno()
+        self.add_channel()
+
+    def handle_read(self):
+        data = self.recv(8192)
+
+        if not data:
+            return
+
+        self.in_buffer += data
+
+        while True:
+            pos = self.in_buffer.find('\n')
+
+            if pos == -1:
+                break
+
+            line = self.in_buffer[0:pos]
+            self.in_buffer = self.in_buffer[pos + 1:]
+
+            # remove new-line characters
+            line = line.rstrip('\r\n')
+
+            self.handle_line(line)
+
+    def writable(self):
+        return self.out_buffer != ''
+
+    def send(self, data):
+        self.out_buffer += data
+
+    def handle_write(self):
+        sent = 0
+        sent = asyncore.dispatcher.send(self, self.out_buffer)
+        self.out_buffer = self.out_buffer[sent:]
+
+    def log_info(self, message, type='info'):
+        if __debug__ or type != 'info':
+            sys.stderr.write('%s: %s\n' % (type, message))
+
+class IAuthHandler(LineDispatcher):
+    def __init__(self, fin):
+        LineDispatcher.__init__(self, fin)
+
+        self.clients = {}
+        self.next_unique_id = 0
+
+        self.send("V :quakenet-iauthd\n")
+        self.send("O AU\n")
+
+    def handle_line(self, line):
+        global trust_handler
+
+        # tokenize the line according to RFC 2812
+        if line.find(' :') != -1:
+            line, trailing = line.split(' :', 1)
+            tokens = line.split()
+            tokens.append(trailing)
+        else:
+            tokens = line.split()
+
+        if len(tokens) < 3: # too few tokens
+            return
+
+        id = tokens[0]
+        command = tokens[1]
+        params = tokens[2:]
+
+        if not id in self.clients:
+            self.clients[id] = {}
+
+        if command == 'C': # new client
+            if len(params) < 2: # too few parameters
+                return
+
+            self.clients[id]['remoteip'] = params[0]
+            self.clients[id]['remoteport'] = params[1]
+
+            self.clients[id]['unique_id'] = str(self.next_unique_id)
+            self.next_unique_id += 1
+        elif command == 'H': # hurry state (ircd has finished DNS/ident check)
+            if trust_handler and trust_handler.connected and trust_handler.authed:
+                trust_handler.send('CHECK %s-%s %s %s\n' %
+                    (id, self.clients[id]['unique_id'], self.clients[id]['username'], self.clients[id]['remoteip']))
+            else:
+                self.send_verdict('%s-%s' % (id, self.clients[id]['unique_id']), 'PASS')
+        elif command == 'u' or command == 'U': # trusted/untrusted username
+            username = params[0]
+
+            # untrusted username (i.e. non-working identd)
+            if command == 'U':
+                username = '~' + username
+
+            self.clients[id]['username'] = username
+        elif command == 'D': # client disconnected
+            if id in self.clients:
+                del self.clients[id]
+
+    def send_verdict(self, combined_id, verdict, message=None):
+        global stats_passed, stats_killed
+
+        tokens = combined_id.split('-', 1)
+
+        if len(tokens) < 2:
+            return
+
+        id, unique_id = tokens
+
+        if not id in self.clients or self.clients[id]['unique_id'] != unique_id:
+            return
+
+        if verdict == 'PASS':
+            # Every 10000th accepted connection gets a free cow.
+            if stats_passed % 10000 == 0:
+                cow = [ '(__)', ' oo\\\\\\~', '  !!!!' ]
+
+                for line in cow:
+                    self.send('C %s %s %s :%s\n' %
+                        (id, self.clients[id]['remoteip'], self.clients[id]['remoteport'], line))
+
+            if message:
+                self.send('C %s %s %s :%s\n' %
+                    (id, self.clients[id]['remoteip'], self.clients[id]['remoteport'], message))
+
+            self.send('D %s %s %s\n' %
+                (id, self.clients[id]['remoteip'], self.clients[id]['remoteport']))
+
+            stats_passed += 1
+        else:
+            if not message:
+                message = 'Connections from your host cannot be accepted at this time.'
+
+            self.send('k %s %s %s :%s\n' %
+                (id, self.clients[id]['remoteip'], self.clients[id]['remoteport'], message))
+
+            stats_killed += 1
+
+    def send_snotice(self, message):
+        self.send('> :iauthd: %s\n' % (message))
+
+    def clear_stats(self):
+        self.send('s\n');
+
+    def add_stats(self, message):
+        self.send('S quakenet-iauthd :%s\n' % message)
+
+class TrustHandler(LineDispatcher):
+    def __init__(self, host, port):
+        LineDispatcher.__init__(self)
+
+        self.authed = False
+        self.connected_since = False
+
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect( (TRUST_HOST, TRUST_PORT) )
+
+    def handle_connect_event(self):
+        try:
+            LineDispatcher.handle_connect_event(self)
+
+            self.connected_since = time()
+        except:
+            iauth_handler.send_snotice('Could not connect to O: ' + str(sys.exc_info()[1]))
+
+    def handle_line(self, line):
+        global iauth_handler
+
+        tokens = line.split(' ', 1)
+
+        if tokens[0] == 'KILL' or tokens[0] == 'PASS':
+            if len(tokens) < 2:
+                return
+
+            arguments = tokens[1].split(' ', 1)
+
+            verdict = tokens[0]
+            id = arguments[0]
+            message = None
+
+            if len(arguments) > 1:
+                message = arguments[1]
+
+            iauth_handler.send_verdict(id, verdict, message)
+        elif tokens[0] == 'AUTH':
+            if len(tokens) < 2:
+                return
+
+            iauth_handler.send_snotice('Received authentication request from O.')
+
+            nonce = tokens[1]
+
+            self.send('AUTH %s %s\n' %
+                (TRUST_NAME, hmac.HMAC(TRUST_PASS, nonce).hexdigest()))
+        elif tokens[0] == 'AUTHOK':
+            iauth_handler.send_snotice('Successfully authenticated with O.')
+            self.authed =  True
+        elif tokens[0] == 'QUIT':
+            if len(tokens) < 2:
+                message = 'No reason specified.'
+            else:
+                message = tokens[1]
+
+            iauth_handler.send_snotice('O closed trust connection: ' + message)
+            self.close()
+
+    def handle_connect(self):
+        global iauth_handler
+        iauth_handler.send_snotice('Reconnected to O.')
+
+    def handle_close(self):
+        global iauth_handler
+        iauth_handler.send_snotice('Connection to O failed.')
+
+        self.close()
+
+iauth_handler = IAuthHandler(sys.stdin)
+trust_handler = None
+
+last_restart = time()
+last_reconnect = 0
+last_stats = 0
+stats_passed = 0
+stats_killed = 0
+
+while True:
+    # Try to (re-)connect to O if necessary
+    if (not trust_handler or not trust_handler.connected) and last_reconnect + 10 < time():
+        if trust_handler:
+            trust_handler.close()
+
+        iauth_handler.send_snotice('Attempting to reconnect to O.')
+        trust_handler = TrustHandler(TRUST_HOST, TRUST_PORT)
+        last_reconnect = time()
+
+    if last_stats + 15 < time():
+        # Update statistics
+        iauth_handler.clear_stats()
+
+        iauth_handler.add_stats('Version: %s' % (VERSION))
+        iauth_handler.add_stats('Started: %s seconds ago' % (int(time() - last_restart)))
+
+        if trust_handler and trust_handler.connected and trust_handler.authed:
+            iauth_handler.add_stats('Connected to O for %s seconds.' % (int(time() - trust_handler.connected_since)))
+        else:
+            iauth_handler.add_stats('Not connected to O.')
+
+        iauth_handler.add_stats('Accepted connections: %d' % (stats_passed))
+        iauth_handler.add_stats('Rejected connections: %d' % (stats_killed))
+
+        last_stats = time()
+
+    asyncore.loop(timeout=10, count=1)
