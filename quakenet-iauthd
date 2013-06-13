@@ -22,7 +22,7 @@ TRUST_PASS = 'test123'
 
 # Do not modify beyond this point.
 
-VERSION = 1
+VERSION = 2
 
 import os
 import sys
@@ -124,7 +124,7 @@ class IAuthHandler(LineDispatcher):
         command = tokens[1]
         params = tokens[2:]
 
-        if not id in self.clients:
+        if id != -1 and not id in self.clients:
             self.clients[id] = {}
 
         if command == 'C': # new client
