@@ -194,6 +194,8 @@ class IAuthHandler(LineDispatcher):
 
             stats_killed += 1
 
+        del self.clients[id]
+
     def send_snotice(self, message):
         self.send('> :iauthd: %s\n' % (message))
 
