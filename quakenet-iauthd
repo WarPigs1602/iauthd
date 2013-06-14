@@ -124,7 +124,7 @@ class IAuthHandler(LineDispatcher):
         command = tokens[1]
         params = tokens[2:]
 
-        if id != -1 and not id in self.clients:
+        if id != '-1' and not id in self.clients:
             self.clients[id] = {}
 
         if command == 'C': # new client
