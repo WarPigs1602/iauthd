@@ -31,6 +31,7 @@ import fcntl
 import asyncore
 import socket
 import base64
+import resource
 from time import time
 
 class LineDispatcher(asyncore.dispatcher):
@@ -304,6 +305,13 @@ while True:
 
         iauth_handler.add_stats('Accepted connections: %d' % (stats_passed))
         iauth_handler.add_stats('Rejected connections: %d' % (stats_killed))
+        iauth_handler.add_stats('Pending connections: %d' % (len(iauth_handler.clients)))
+
+        ru = resource.getrusage(resource.RUSAGE_SELF)
+
+        iauth_handler.add_stats('--')
+        iauth_handler.add_stats('Memory usage: %s kB' % (ru[2] / 1024))
+        iauth_handler.add_stats('CPU usage: %.2f%%' % ((ru[0] + ru[1]) / (time() - last_restart)))
 
         last_stats = time()
 
