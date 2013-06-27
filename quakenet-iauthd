@@ -41,6 +41,8 @@ class LineDispatcher(asyncore.dispatcher):
         self.in_buffer = ''
         self.out_buffer = ''
 
+        self.send('VERSION %s\n' % (VERSION))
+
         if fd == None:
             return
 
