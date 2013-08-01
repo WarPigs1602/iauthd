@@ -152,7 +152,8 @@ class IAuthHandler(LineDispatcher):
             if command == 'U':
                 username = '~' + username
 
-            self.clients[id]['username'] = username
+            if not 'username' in self.clients[id] or username[0] != '~':
+                self.clients[id]['username'] = username
         elif command == 'D': # client disconnected
             if id in self.clients:
                 del self.clients[id]
