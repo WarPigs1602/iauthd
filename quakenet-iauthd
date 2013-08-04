@@ -227,7 +227,7 @@ class TrustHandler(LineDispatcher):
 
             self.connected_since = time()
         except:
-            iauth_handler.send_snotice('Could not connect to O: ' + str(sys.exc_info()[1]))
+            iauth_handler.send_snotice('Could not connect to trusts backend: ' + str(sys.exc_info()[1]))
 
     def handle_line(self, line):
         global iauth_handler
@@ -252,14 +252,14 @@ class TrustHandler(LineDispatcher):
             if len(tokens) < 2:
                 return
 
-            iauth_handler.send_snotice('Received authentication request from O.')
+            iauth_handler.send_snotice('Received authentication request from trusts backend.')
 
             nonce = tokens[1]
 
             self.send('AUTH %s %s\n' %
                 (TRUST_NAME, hmac.HMAC(TRUST_PASS, nonce).hexdigest()))
         elif tokens[0] == 'AUTHOK':
-            iauth_handler.send_snotice('Successfully authenticated with O.')
+            iauth_handler.send_snotice('Successfully authenticated with trusts backend.')
             self.authed =  True
         elif tokens[0] == 'QUIT':
             if len(tokens) < 2:
@@ -267,16 +267,16 @@ class TrustHandler(LineDispatcher):
             else:
                 message = tokens[1]
 
-            iauth_handler.send_snotice('O closed trust connection: ' + message)
+            iauth_handler.send_snotice('Trusts backend closed connection: ' + message)
             self.close()
 
     def handle_connect(self):
         global iauth_handler
-        iauth_handler.send_snotice('Reconnected to O.')
+        iauth_handler.send_snotice('Reconnected to trusts backend.')
 
     def handle_close(self):
         global iauth_handler
-        iauth_handler.send_snotice('Connection to O failed.')
+        iauth_handler.send_snotice('Connection to trusts backend failed.')
 
         self.close()
 
@@ -290,12 +290,12 @@ stats_passed = 0
 stats_killed = 0
 
 while True:
-    # Try to (re-)connect to O if necessary
+    # Try to (re-)connect to trusts backend if necessary
     if (not trust_handler or not trust_handler.connected) and last_reconnect + 10 < time():
         if trust_handler:
             trust_handler.close()
 
-        iauth_handler.send_snotice('Attempting to reconnect to O.')
+        iauth_handler.send_snotice('Attempting to reconnect to trusts backend.')
         trust_handler = TrustHandler(TRUST_HOST, TRUST_PORT)
         last_reconnect = time()
 
@@ -307,9 +307,9 @@ while True:
         iauth_handler.add_stats('Started: %s seconds ago' % (int(time() - last_restart)))
 
         if trust_handler and trust_handler.connected and trust_handler.authed:
-            iauth_handler.add_stats('Connected to O for %s seconds.' % (int(time() - trust_handler.connected_since)))
+            iauth_handler.add_stats('Connected to trusts backend for %s seconds.' % (int(time() - trust_handler.connected_since)))
         else:
-            iauth_handler.add_stats('Not connected to O.')
+            iauth_handler.add_stats('Not connected to trusts backend.')
 
         iauth_handler.add_stats('Accepted connections: %d' % (stats_passed))
         iauth_handler.add_stats('Rejected connections: %d' % (stats_killed))
