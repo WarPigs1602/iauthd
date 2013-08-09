@@ -23,7 +23,7 @@ BIND_HOST  = '0.0.0.0'
 
 # Do not modify beyond this point.
 
-VERSION = 2
+VERSION = 333333333333333333333333333333333
 
 import os
 import sys
@@ -203,6 +203,9 @@ class IAuthHandler(LineDispatcher):
     def send_snotice(self, message):
         self.send('> :iauthd: %s\n' % (message))
 
+    def send_throttle(self, op, addr):
+        self.send('T %s %s\n' % (op, addr))
+
     def clear_stats(self):
         self.send('s\n');
 
@@ -248,6 +251,18 @@ class TrustHandler(LineDispatcher):
                 message = arguments[1]
 
             iauth_handler.send_verdict(id, verdict, message)
+        elif tokens[0] == 'THROTTLE' or tokens[0] == 'UNTHROTTLE':
+            if len(tokens) < 2:
+                return
+
+            if tokens[0] == 'THROTTLE':
+                op = '+'
+            else:
+                op = '-'
+
+            addr = tokens[1]
+
+            iauth_handler.send_throttle(op, addr)
         elif tokens[0] == 'AUTH':
             if len(tokens) < 2:
                 return
