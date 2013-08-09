@@ -23,7 +23,7 @@ BIND_HOST  = '0.0.0.0'
 
 # Do not modify beyond this point.
 
-VERSION = 333333333333333333333333333333333
+VERSION = 3
 
 import os
 import sys
