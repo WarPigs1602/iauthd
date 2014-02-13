@@ -23,7 +23,7 @@ BIND_HOST  = '0.0.0.0'
 
 # Do not modify beyond this point.
 
-VERSION = 3
+VERSION = 4
 
 import os
 import sys
@@ -158,6 +158,9 @@ class IAuthHandler(LineDispatcher):
         elif command == 'D': # client disconnected
             if id in self.clients:
                 del self.clients[id]
+
+    def handle_close(self):
+        sys.exit(0)
 
     def send_verdict(self, combined_id, verdict, message=None):
         global stats_passed, stats_killed
