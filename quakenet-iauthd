@@ -163,7 +163,7 @@ class IAuthHandler(LineDispatcher):
         sys.exit(0)
 
     def send_verdict(self, combined_id, verdict, message=None):
-        global stats_passed, stats_killed
+        global stats_passed, stats_killed, stats_unthrottled
 
         tokens = combined_id.split('-', 1)
 
@@ -192,6 +192,11 @@ class IAuthHandler(LineDispatcher):
                 (id, self.clients[id]['remoteip'], self.clients[id]['remoteport']))
 
             stats_passed += 1
+        elif verdict == 'UNTHROTTLE':
+            self.send('T %s %s %s\n' % 
+                (id, self.clients[id]['remoteip'], self.clients[id]['remoteport']))
+            stats_unthrottled += 1
+            return # not a final verdict, just an addition
         else:
             if not message:
                 message = 'Connections from your host cannot be accepted at this time.'
@@ -205,9 +210,6 @@ class IAuthHandler(LineDispatcher):
 
     def send_snotice(self, message):
         self.send('> :iauthd: %s\n' % (message))
-
-    def send_throttle(self, op, addr):
-        self.send('T %s %s\n' % (op, addr))
 
     def clear_stats(self):
         self.send('s\n');
@@ -240,7 +242,7 @@ class TrustHandler(LineDispatcher):
 
         tokens = line.split(' ', 1)
 
-        if tokens[0] == 'KILL' or tokens[0] == 'PASS':
+        if tokens[0] == 'KILL' or tokens[0] == 'PASS' or tokens[0] == 'UNTHROTTLE':
             if len(tokens) < 2:
                 return
 
@@ -254,18 +256,6 @@ class TrustHandler(LineDispatcher):
                 message = arguments[1]
 
             iauth_handler.send_verdict(id, verdict, message)
-        elif tokens[0] == 'THROTTLE' or tokens[0] == 'UNTHROTTLE':
-            if len(tokens) < 2:
-                return
-
-            if tokens[0] == 'THROTTLE':
-                op = '+'
-            else:
-                op = '-'
-
-            addr = tokens[1]
-
-            iauth_handler.send_throttle(op, addr)
         elif tokens[0] == 'AUTH':
             if len(tokens) < 2:
                 return
@@ -306,6 +296,7 @@ last_reconnect = 0
 last_stats = 0
 stats_passed = 0
 stats_killed = 0
+stats_unthrottled = 0
 
 while True:
     # Try to (re-)connect to trusts backend if necessary
@@ -331,6 +322,7 @@ while True:
 
         iauth_handler.add_stats('Accepted connections: %d' % (stats_passed))
         iauth_handler.add_stats('Rejected connections: %d' % (stats_killed))
+        iauth_handler.add_stats('Unthrottled connections: %d' % (stats_unthrottled))
         iauth_handler.add_stats('Pending connections: %d' % (len(iauth_handler.clients)))
 
         ru = resource.getrusage(resource.RUSAGE_SELF)
