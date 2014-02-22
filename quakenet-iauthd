@@ -232,8 +232,6 @@ class TrustHandler(LineDispatcher):
     def handle_connect_event(self):
         try:
             LineDispatcher.handle_connect_event(self)
-
-            self.connected_since = time()
         except:
             iauth_handler.send_snotice('Could not connect to trusts backend: ' + str(sys.exc_info()[1]))
 
@@ -269,6 +267,7 @@ class TrustHandler(LineDispatcher):
         elif tokens[0] == 'AUTHOK':
             iauth_handler.send_snotice('Successfully authenticated with trusts backend.')
             self.authed =  True
+            self.connected_since = time()
         elif tokens[0] == 'QUIT':
             if len(tokens) < 2:
                 message = 'No reason specified.'
