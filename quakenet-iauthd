@@ -230,6 +230,11 @@ class TrustHandler(LineDispatcher):
         self.connect( (TRUST_HOST, TRUST_PORT) )
 
     def handle_connect_event(self):
+        self.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        self.setsockopt(socket.SOL_TCP, socket.TCP_KEEPIDLE, 10)
+        self.setsockopt(socket.SOL_TCP, socket.TCP_KEEPCNT, 3)
+        self.setsockopt(socket.SOL_TCP, socket.TCP_KEEPINTVL, 10)
+
         try:
             LineDispatcher.handle_connect_event(self)
         except:
