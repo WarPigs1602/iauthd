@@ -1,5 +1,5 @@
 # qwebirc patch from Andreas Pschorn<br>
-snircd needs for qwebirc the iauth-fix-webirc.patch file,<br>
+[snircd](https://github.com/quakenet/snircd) needs for [qwebirc](https://github.com/qwebirc/qwebirc) the iauth-fix-webirc.patch file,<br>
 Go to the snircd sources directory, and enter<br>
 "wget https://raw.githubusercontent.com/WarPigs1602/snircd-patches/main/iauth-fix-webirc.patch",<br>
 then enter "git apply iauth-fix-webirc.patch"<br>
