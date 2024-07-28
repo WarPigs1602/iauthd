@@ -23,7 +23,8 @@ BIND_HOST  = '0.0.0.0'
 
 # qwebirc patch from Andreas Pschorn
 # snircd needs for qwebirc the iauth-fix-webirc.patch file,
-# Go to the snircd sources directory enter "wget https://raw.githubusercontent.com/WarPigs1602/snircd-patches/main/iauth-fix-webirc.patch",
+# Go to the snircd sources directory, and enter 
+# "wget https://raw.githubusercontent.com/WarPigs1602/snircd-patches/main/iauth-fix-webirc.patch",
 # then enter "git apply iauth-fix-webirc.patch"
 # After that then enter "./configure", "make" and "make install",
 # and the ircd will now working with the Patch.
