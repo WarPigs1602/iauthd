@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # Copyright (C) 2013 Gunnar Beutner
 #
 # This program is free software; you can redistribute it and/or
@@ -17,9 +17,28 @@
 
 TRUST_HOST = '127.0.0.1'
 TRUST_PORT = 5776
-TRUST_NAME = 'gnb.netsplit.net'
-TRUST_PASS = 'test123'
+TRUST_NAME = 'irc.midiandmore.net'
+TRUST_PASS = 'password'
 BIND_HOST  = '0.0.0.0'
+
+# qwebirc patch from Andreas Pschorn
+# snircd needs for qwebirc the webirc.patch file,
+# please download it from https://github.com/quakenet/snircd-patchqueue/blob/master/webirc.patch 
+# Please remove the "diff -r e1de3d14c9df doc/readme.iauth" section in this file,
+# for correctly parsing this patch!
+# Go to the snircd sources directory and then enter "git apply webirc.patch",
+# After that then enter "./configure", "make" and "make install",
+# and the ircd will now working with the Patch.
+# Further configuration in the "ircd.conf" is needed or modified to:
+# IAuth {
+#  program = "/usr/bin/env" "python2" "<path to quakenet-iauthd-file>";
+# };
+#
+# Have fun for the using of this script :)
+WEBIRC_HOST = '127.0.0.1'
+WEBIRC_PASS = 'password'
+WEBIRC_USERNAME = 'qwebirc'
+
 
 # Do not modify beyond this point.
 
@@ -35,6 +54,7 @@ import base64
 import resource
 from time import time
 
+               
 class LineDispatcher(asyncore.dispatcher):
     def __init__(self, fd=None, map=None):
         asyncore.dispatcher.__init__(self, None, map)
@@ -82,7 +102,7 @@ class LineDispatcher(asyncore.dispatcher):
 
             # remove new-line characters
             line = line.rstrip('\r\n')
-
+ 
             self.handle_line(line)
 
     def writable(self):
@@ -131,7 +151,18 @@ class IAuthHandler(LineDispatcher):
         if id != '-1' and not id in self.clients:
             self.clients[id] = {}
 
-        if command == 'C': # new client
+        # qwebirc patch from Andreas Pschorn 
+        if command == 'W': # configure webirc
+            if len(params) < 4: # too few parameters
+                return
+
+            self.clients[id]['password'] = params[0]
+            self.clients[id]['username'] = params[1]
+            self.clients[id]['hostname'] = params[2]
+            self.clients[id]['ip'] = params[3]
+            if self.clients[id]['password'] == WEBIRC_PASS and self.clients[id]['username'] == WEBIRC_USERNAME:
+                self.send('N %s %s %s %s\n' % (id, self.clients[id]['remoteip'], self.clients[id]['remoteport'], self.clients[id]['hostname']))
+        elif command == 'C': # new client
             if len(params) < 2: # too few parameters
                 return
 
