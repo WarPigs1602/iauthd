@@ -22,11 +22,9 @@ TRUST_PASS = 'password'
 BIND_HOST  = '0.0.0.0'
 
 # qwebirc patch from Andreas Pschorn
-# snircd needs for qwebirc the webirc.patch file,
-# please download it from https://github.com/quakenet/snircd-patchqueue/blob/master/webirc.patch 
-# Please remove the "diff -r e1de3d14c9df doc/readme.iauth" section in this file,
-# for correctly parsing this patch!
-# Go to the snircd sources directory and then enter "git apply webirc.patch",
+# snircd needs for qwebirc the iauth-fix-webirc.patch file,
+# Go to the snircd sources directory enter "wget https://raw.githubusercontent.com/WarPigs1602/snircd-patches/main/iauth-fix-webirc.patch",
+# then enter "git apply iauth-fix-webirc.patch"
 # After that then enter "./configure", "make" and "make install",
 # and the ircd will now working with the Patch.
 # Further configuration in the "ircd.conf" is needed or modified to:
