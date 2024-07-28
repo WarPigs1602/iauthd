@@ -30,9 +30,14 @@ BIND_HOST  = '0.0.0.0'
 # After that then enter "./configure", "make" and "make install",
 # and the ircd will now working with the Patch.
 # Further configuration in the "ircd.conf" is needed or modified to:
+#
 # IAuth {
 #  program = "/usr/bin/env" "python2" "<path to quakenet-iauthd-file>";
 # };
+#
+# And set in the features section:
+#
+# "HIS_STATS_IAUTH" = "TRUE";
 #
 # Have fun for the using of this script :)
 
