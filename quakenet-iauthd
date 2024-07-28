@@ -35,6 +35,7 @@ BIND_HOST  = '0.0.0.0'
 # };
 #
 # Have fun for the using of this script :)
+
 WEBIRC_HOST = '127.0.0.1'
 WEBIRC_PASS = 'password'
 WEBIRC_USERNAME = 'qwebirc'
