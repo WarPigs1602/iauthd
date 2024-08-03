@@ -3,7 +3,7 @@
 Go to the snircd sources directory, and enter<br>
 "wget https://raw.githubusercontent.com/WarPigs1602/snircd-patches/main/iauth-fix-webirc.patch",<br>
 then enter "git apply iauth-fix-webirc.patch"<br>
-After that then enter "./configure", "make" and "make install",<br>
+After that then enter "./configure", edit in the config.h the MAXCONNECTIONS to reduce that, then "make" and "make install",<br>
 and the ircd will now working with the Patch.<br>
 Further configuration in the "ircd.conf" is needed or modified to:<br>
 <br>
