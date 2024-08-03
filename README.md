@@ -8,7 +8,7 @@ and the ircd will now working with the Patch.<br>
 Further configuration in the "ircd.conf" is needed or modified to:<br>
 <br>
 IAuth {<br>
- program = "/usr/bin/env" "python2" "<path to quakenet-iauthd-file>";<br>
+ program = "/usr/bin/env" "python2" "path to quakenet-iauthd-file";<br>
 };<br>
 <br>
 And set in the features section:<br>
